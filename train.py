@@ -233,7 +233,7 @@ def evaluate(hps, generator, eval_loader, writer_eval):
       writer=writer_eval,
       global_step=global_step, 
       images=image_dict,
-      audios=audio_dict,
+      audios={},
       audio_sampling_rate=hps.data.sampling_rate
     )
     generator.train()
