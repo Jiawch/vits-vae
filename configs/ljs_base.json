@@ -14,7 +14,8 @@
     "init_lr_ratio": 1,
     "warmup_epochs": 0,
     "c_mel": 1.0,
-    "c_kl": 1.0
+    "c_kl": 1.0,
+    "use_ddp": false
   },
   "data": {
     "training_files":"filelists/ljs_audio_text_val_filelist.txt.cleaned",

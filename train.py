@@ -41,13 +41,15 @@ global_step = 0
 def main():
   """Assume Single Node Multi GPUs Training Only"""
   assert torch.cuda.is_available(), "CPU training is not allowed."
-
-  n_gpus = torch.cuda.device_count()
-  os.environ['MASTER_ADDR'] = 'localhost'
-  os.environ['MASTER_PORT'] = '80000'
-
   hps = utils.get_hparams()
-  mp.spawn(run, nprocs=n_gpus, args=(n_gpus, hps,))
+
+  if hps.train.use_ddp:
+    n_gpus = torch.cuda.device_count()
+    os.environ['MASTER_ADDR'] = 'localhost'
+    os.environ['MASTER_PORT'] = '80000'
+    mp.spawn(run, nprocs=n_gpus, args=(n_gpus, hps,))
+  else:
+    run(0, 1, hps)
 
 
 def run(rank, n_gpus, hps):
@@ -59,7 +61,8 @@ def run(rank, n_gpus, hps):
     writer = SummaryWriter(log_dir=hps.model_dir)
     writer_eval = SummaryWriter(log_dir=os.path.join(hps.model_dir, "eval"))
 
-  dist.init_process_group(backend='nccl', init_method='env://', world_size=n_gpus, rank=rank)
+  if hps.train.use_ddp:
+    dist.init_process_group(backend='nccl', init_method='env://', world_size=n_gpus, rank=rank)
   torch.manual_seed(hps.train.seed)
   torch.cuda.set_device(rank)
 
@@ -70,7 +73,7 @@ def run(rank, n_gpus, hps):
       [32,300,400,500,600,700,800,900,1000],
       num_replicas=n_gpus,
       rank=rank,
-      shuffle=True)
+      shuffle=True) if hps.train.use_ddp else None
   collate_fn = TextAudioCollate()
   train_loader = DataLoader(train_dataset, num_workers=8, shuffle=False, pin_memory=True,
       collate_fn=collate_fn, batch_sampler=train_sampler)
@@ -90,7 +93,9 @@ def run(rank, n_gpus, hps):
       hps.train.learning_rate, 
       betas=hps.train.betas, 
       eps=hps.train.eps)
-  net_g = DDP(net_g, device_ids=[rank])
+
+  if hps.train.use_ddp:
+    net_g = DDP(net_g, device_ids=[rank])
 
   try:
     _, _, _, epoch_str = utils.load_checkpoint(utils.latest_checkpoint_path(hps.model_dir, "G_*.pth"), net_g, optim_g)
@@ -119,7 +124,8 @@ def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loade
   if writers is not None:
     writer, writer_eval = writers
 
-  train_loader.batch_sampler.set_epoch(epoch)
+  if hps.train.use_ddp:
+    train_loader.batch_sampler.set_epoch(epoch)
   global global_step
 
   net_g.train()
@@ -203,7 +209,10 @@ def evaluate(hps, generator, eval_loader, writer_eval):
         y = y[:1]
         y_lengths = y_lengths[:1]
         break
-      y_hat, attn, mask, *_ = generator.module.infer(x, x_lengths, max_len=1000)
+      if hps.train.use_ddp:
+        y_hat, attn, mask, *_ = generator.module.infer(x, x_lengths, max_len=1000)
+      else:
+        y_hat, attn, mask, *_ = generator.infer(x, x_lengths, max_len=1000)
       y_hat_lengths = mask.sum([1,2]).long() * hps.data.hop_length
 
       mel = spec_to_mel_torch(
