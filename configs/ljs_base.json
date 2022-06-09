@@ -14,8 +14,8 @@
     "init_lr_ratio": 1,
     "warmup_epochs": 0,
     "c_mel": 1.0,
-    "c_kl": 1.0,
-    "use_ddp": false
+    "c_kl": 0.01,
+    "use_ddp": true
   },
   "data": {
     "training_files":"filelists/ljs_audio_text_train_filelist.txt.cleaned",
@@ -48,6 +48,7 @@
     "upsample_initial_channel": 512,
     "upsample_kernel_sizes": [16,16,4,4],
     "n_layers_q": 3,
-    "use_spectral_norm": false
+    "use_spectral_norm": false,
+    "use_sdp": false
   }
 }

@@ -1,6 +1,4 @@
-from train_fs import main
 import matplotlib.pyplot as plt
-import IPython.display as ipd
 
 import os
 import json
@@ -25,6 +23,8 @@ import sys, os
 sys.path.append('hifigan/')
 from env import AttrDict
 from vocoder_models import Generator as HiFiGAN
+from mel_processing import mel_spectrogram_torch, spec_to_mel_torch
+import librosa
 
 print('Initializing HiFi-GAN...')
 with open('hifigan_pretrained/config.json') as f:
@@ -60,7 +60,7 @@ def main(args):
         _ = net_g.eval()
 
     utils.load_checkpoint(args.ckpt, net_g, None)
-    
+
     if hps.data.n_speakers > 0:
         test_file = "filelists/vctk_audio_sid_text_test_filelist.txt"
     else:
@@ -69,7 +69,7 @@ def main(args):
     os.makedirs(output_dir, exist_ok=True)
 
     if hps.data.n_speakers == 0:
-        for line in open(test_file, "r").readlines():
+        for line in tqdm(open(test_file, "r").readlines()[:50]):
             item_id, txt = line.strip().split("|")
             # print(item_id, txt)
             stn_tst = get_text(txt, hps)
@@ -79,6 +79,13 @@ def main(args):
                 mel = net_g.infer(x_tst, x_tst_lengths, noise_scale=.667, noise_scale_w=0.8, length_scale=1)[0]     # [b, h, t]
                 audio = vocoder.forward(mel)[0, 0].cpu().numpy()    # [t * hop]
                 output_file = os.path.join(output_dir, os.path.basename(item_id) +'.wav')
+                write(output_file, 22050, audio)
+                wav_fn = f"/blob/v-jcong/data/LJSpeech-1.1/raw/wavs/{os.path.basename(item_id)}"
+                y, sr = librosa.load(wav_fn, sr=None)
+                y_mel = mel_spectrogram_torch(torch.from_numpy(y).unsqueeze(0),
+                    1024, 80, sr, 256, 1024, 0, 8000).cuda()
+                audio = vocoder.forward(y_mel)[0, 0].cpu().numpy()    # [t * hop]
+                output_file = os.path.join(output_dir, os.path.basename(item_id) +'.gt.wav')
                 write(output_file, 22050, audio)
     else:
         vctk = [x.strip() for x in open("filelists/vctk.txt", "r").readlines()]
@@ -104,7 +111,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     log_dir = "logs"
     args.model_dir = os.path.join(log_dir, args.m)
-    args.ckpt = utils.latest_checkpoint_path(os.path.join(args.model_dir, "ckpt"), "G_*.pth")
+    args.ckpt = utils.latest_checkpoint_path(os.path.join(args.model_dir, ""), "G_*.pth")
     global_step = os.path.splitext(os.path.basename(args.ckpt).split("_")[1])[0]
     args.o = os.path.join(args.model_dir, f"{args.o}_{global_step}")
     main(args)
