@@ -152,7 +152,8 @@ def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loade
       with autocast(enabled=False):
         loss_dur = torch.sum(l_length.float())
         loss_mel = F.l1_loss(mel, y_hat) * hps.train.c_mel
-        loss_kl = kl_loss(z_p, logs_q, m_p, logs_p, z_mask) * hps.train.c_kl
+        c_kl = min(1., global_step / hps.train.c_kl)
+        loss_kl = kl_loss(z_p, logs_q, m_p, logs_p, z_mask) * c_kl
 
         loss_gen_all = loss_mel + loss_dur + loss_kl
     optim_g.zero_grad()
@@ -191,7 +192,7 @@ def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loade
     global_step += 1
   
   if rank == 0:
-    logger.info('====> Epoch: {}'.format(epoch))
+      logger.info('====> Epoch: {}, Step: {}'.format(epoch, global_step))
 
  
 def evaluate(hps, generator, eval_loader, writer_eval):

@@ -4,7 +4,7 @@
     "eval_interval": 1000,
     "seed": 1234,
     "epochs": 10000,
-    "learning_rate": 5e-4,
+    "learning_rate": 2e-4,
     "betas": [0.8, 0.99],
     "eps": 1e-9,
     "batch_size": 8,
@@ -14,7 +14,7 @@
     "init_lr_ratio": 1,
     "warmup_epochs": 0,
     "c_mel": 1.0,
-    "c_kl": 0.01,
+    "c_kl": 50000,
     "use_ddp": true
   },
   "data": {
@@ -34,9 +34,9 @@
     "cleaned_text": true
   },
   "model": {
-    "inter_channels": 192,
-    "hidden_channels": 192,
-    "filter_channels": 768,
+    "inter_channels": 384,
+    "hidden_channels": 384,
+    "filter_channels": 1536,
     "n_heads": 2,
     "n_layers": 6,
     "kernel_size": 3,
