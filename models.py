@@ -422,6 +422,34 @@ class MultiPeriodDiscriminator(torch.nn.Module):
         return y_d_rs, y_d_gs, fmap_rs, fmap_gs
 
 
+class Memory(nn.Module):
+    """docstring for Memory"""
+    def __init__(self, 
+        memory_size, 
+        memory_channels, 
+        hidden_channels,
+        filter_channels,
+        n_heads,
+        n_layers,
+        kernel_size,
+        p_dropout):
+        super().__init__()
+        self.memory_bank = nn.Parameter(torch.FloatTensor(memory_channels, memory_size))  # [memory_channels， memory_size]
+        self.attention = attentions.EncoderWithMemory(
+            memory_channels,
+            hidden_channels,
+            filter_channels,
+            n_heads,
+            n_layers,
+            kernel_size,
+            p_dropout)
+
+    def forward(self, x, x_mask):           # [B, C, T]
+        N = x.size(0)
+        c = torch.tanh(self.memory_bank).unsqueeze(0).expand(N, -1, -1)  # [N, memory_channels， memory_size]
+        x = self.attention(x, c, x_mask)
+        return x
+
 
 class SynthesizerTrn(nn.Module):
   """
@@ -445,9 +473,12 @@ class SynthesizerTrn(nn.Module):
     upsample_rates, 
     upsample_initial_channel, 
     upsample_kernel_sizes,
+    memory_size,
     n_speakers=0,
+    memory_channels,
     gin_channels=0,
     use_sdp=True,
+    use_memory=False,
     **kwargs):
 
     super().__init__()
@@ -471,6 +502,7 @@ class SynthesizerTrn(nn.Module):
     self.gin_channels = gin_channels
 
     self.use_sdp = use_sdp
+    self.use_memory = use_memory
 
     self.enc_p = TextEncoder(n_vocab,
         inter_channels,
@@ -498,6 +530,16 @@ class SynthesizerTrn(nn.Module):
 
     if n_speakers > 1:
       self.emb_g = nn.Embedding(n_speakers, gin_channels)
+
+    if use_memory:
+      self.memory = Memory(memory_size,
+        memory_channels,
+        hidden_channels,
+        filter_channels,
+        n_heads,
+        1,
+        kernel_size,
+        p_dropout)
 
   def forward(self, x, x_lengths, y, y_lengths, sid=None):
 
@@ -535,6 +577,8 @@ class SynthesizerTrn(nn.Module):
     m_p = torch.matmul(attn.squeeze(1), m_p.transpose(1, 2)).transpose(1, 2)
     logs_p = torch.matmul(attn.squeeze(1), logs_p.transpose(1, 2)).transpose(1, 2)
 
+    if self.use_memory:
+        z = self.memory(z, y_mask)
     o, o_mask = self.dec(z, y_lengths)
     return o, l_length, attn, o_mask, x_mask, y_mask, (z, z_p, m_p, logs_p, m_q, logs_q)
 
@@ -561,6 +605,8 @@ class SynthesizerTrn(nn.Module):
 
     z_p = m_p + torch.randn_like(m_p) * torch.exp(logs_p) * noise_scale
     z = self.flow(z_p, y_mask, g=g, reverse=True)
+    if self.use_memory:
+        z = self.memory(z, y_mask)
     o, o_mask = self.dec((z * y_mask), y_lengths)
     return o, attn, y_mask, (z, z_p, m_p, logs_p)
 

@@ -49,6 +49,9 @@
     "upsample_kernel_sizes": [16,16,4,4],
     "n_layers_q": 3,
     "use_spectral_norm": false,
-    "use_sdp": false
+    "use_sdp": false,
+    "use_memory": true,
+    "memory_size": 10000,
+    "memory_channels": 80,
   }
 }
