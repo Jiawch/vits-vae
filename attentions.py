@@ -327,7 +327,9 @@ class EncoderWithMemory(nn.Module):
       self.norm_layers_2.append(LayerNorm(hidden_channels))
 
   def forward(self, x, c, x_mask):
-    attn_mask = x_mask.unsqueeze(2) * x_mask.unsqueeze(-1)
+    b, _, memory_size = c.size()
+    c_mask = x_mask.new_ones(b, 1, memory_size)
+    attn_mask = c_mask.unsqueeze(2) * x_mask.unsqueeze(-1)
     x = x * x_mask
     for i in range(self.n_layers):
       y = self.attn_layers[i](x, c, attn_mask)
