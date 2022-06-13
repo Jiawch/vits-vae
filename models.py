@@ -442,7 +442,8 @@ class Memory(nn.Module):
             n_heads,
             n_layers,
             kernel_size,
-            p_dropout)
+            p_dropout,
+            window_size=None)
 
     def forward(self, x, x_mask):           # [B, C, T]
         N = x.size(0)
