@@ -64,7 +64,8 @@ def main(args):
     if hps.data.n_speakers > 0:
         test_file = "filelists/vctk_audio_sid_text_test_filelist.txt"
     else:
-        test_file = "filelists/ljs_audio_text_test_filelist.txt"
+        #test_file = "filelists/ljs_audio_text_test_filelist.txt"
+        test_file = "filelists/test_filelist.txt"
     output_dir = args.o
     os.makedirs(output_dir, exist_ok=True)
 
