@@ -95,6 +95,9 @@ def run(rank, n_gpus, hps):
       betas=hps.train.betas, 
       eps=hps.train.eps)
 
+  if rank == 0:
+    print(net_g)
+
   if hps.train.use_ddp:
     net_g = DDP(net_g, device_ids=[rank])
 
