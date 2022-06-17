@@ -325,9 +325,9 @@ class EncoderWithMemory(nn.Module):
     attn_mask = k_mask.unsqueeze(2) * x_mask.unsqueeze(-1)
     x = x * x_mask
     for i in range(self.n_layers):
-      y = self.attn_layers[i](x, k, v, attn_mask)
-    x = (x + y) * x_mask
-    return x
+      y, attn = self.attn_layers[i](x, k, v, attn_mask)
+    x = y * x_mask
+    return x, attn
 
 
 class MultiHeadAttentionWithMemory(nn.Module):
@@ -376,7 +376,7 @@ class MultiHeadAttentionWithMemory(nn.Module):
     x, self.attn = self.attention(q, k, v, mask=attn_mask)
 
     x = self.conv_o(x)
-    return x
+    return x, self.attn
 
   def attention(self, query, key, value, mask=None):
     # reshape [b, d, t] -> [b, n_h, t, d_k]
