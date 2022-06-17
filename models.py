@@ -458,6 +458,7 @@ class Memory(nn.Module):
         return x_q, (attn_q, attn_p)
 
     def infer(self, x_p, x_mask):
+        N = x_p.size(0)
         k = torch.tanh(self.memory_bank_k).unsqueeze(0).expand(N, -1, -1)
         v = torch.tanh(self.memory_bank_v).unsqueeze(0).expand(N, -1, -1)
         x_p, _ = self.attention(x_p, k, v, x_mask)
