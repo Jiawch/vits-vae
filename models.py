@@ -434,7 +434,10 @@ class Memory(nn.Module):
         kernel_size,
         p_dropout):
         super().__init__()
-        self.memory_bank = nn.Parameter(torch.FloatTensor(memory_channels, memory_size))  # [memory_channels， memory_size]
+        self.memory_bank_k = nn.Parameter(torch.FloatTensor(memory_channels, memory_size))  # [memory_channels， memory_size]
+        self.memory_bank_v = nn.Parameter(torch.FloatTensor(memory_channels, memory_size))
+        init.normal_(self.memory_bank_k, mean=0, std=0.5)
+        init.normal_(self.memory_bank_v, mean=0, std=0.5)
         self.attention = attentions.EncoderWithMemory(
             memory_channels,
             hidden_channels,
@@ -447,8 +450,9 @@ class Memory(nn.Module):
 
     def forward(self, x, x_mask):           # [B, C, T]
         N = x.size(0)
-        c = torch.tanh(self.memory_bank).unsqueeze(0).expand(N, -1, -1)  # [N, memory_channels， memory_size]
-        x = self.attention(x, c, x_mask)
+        k = torch.tanh(self.memory_bank_k).unsqueeze(0).expand(N, -1, -1)  # [N, memory_channels， memory_size]
+        v = torch.tanh(self.memory_bank_v).unsqueeze(0).expand(N, -1, -1)  # [N, memory_channels， memory_size]
+        x = self.attention(x, k, v,, x_mask)
         return x
 
 
