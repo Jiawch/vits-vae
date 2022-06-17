@@ -3,6 +3,7 @@ import math
 import torch
 from torch import nn
 from torch.nn import functional as F
+import torch.nn.init as init
 
 import commons
 import modules
@@ -452,7 +453,7 @@ class Memory(nn.Module):
         N = x.size(0)
         k = torch.tanh(self.memory_bank_k).unsqueeze(0).expand(N, -1, -1)  # [N, memory_channels， memory_size]
         v = torch.tanh(self.memory_bank_v).unsqueeze(0).expand(N, -1, -1)  # [N, memory_channels， memory_size]
-        x = self.attention(x, k, v,, x_mask)
+        x = self.attention(x, k, v, x_mask)
         return x
 
 
