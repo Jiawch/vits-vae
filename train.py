@@ -140,7 +140,7 @@ def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loade
 
     with autocast(enabled=hps.train.fp16_run):
       y_hat, l_length, attn, _, x_mask, z_mask,\
-      (z, z_p, m_p, logs_p, m_q, logs_q), (attn_q, attn_p) = net_g(x, x_lengths, spec, spec_lengths)
+      (z, z_p, m_p, logs_p, m_q, logs_q), (attn_q, attn_p), (z_tgt, z_recalled) = net_g(x, x_lengths, spec, spec_lengths)
 
       mel = spec_to_mel_torch(
           spec, 
@@ -158,8 +158,9 @@ def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loade
         c_kl = min(1., global_step / hps.train.c_kl)
         loss_kl = kl_loss(z_p, logs_q, m_p, logs_p, z_mask) * c_kl
         loss_attn = (1. - F.cosine_similarity(attn_q, attn_p, dim=-1).mean()) * hps.train.c_attn
+        loss_recall = F.l1_loss(z_tgt, z_recalled) * hps.train.c_recall
 
-        loss_gen_all = loss_mel + loss_dur + loss_kl + loss_attn
+        loss_gen_all = loss_mel + loss_dur + loss_kl + loss_attn + loss_recall
     optim_g.zero_grad()
     scaler.scale(loss_gen_all).backward()
     scaler.unscale_(optim_g)
@@ -170,14 +171,14 @@ def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loade
     if rank==0:
       if global_step % hps.train.log_interval == 0:
         lr = optim_g.param_groups[0]['lr']
-        losses = [loss_mel, loss_dur, loss_kl, loss_attn]
+        losses = [loss_mel, loss_dur, loss_kl, loss_attn, loss_recall]
         logger.info('Train Epoch: {} [{:.0f}%]'.format(
           epoch,
           100. * batch_idx / len(train_loader)))
         logger.info([x.item() for x in losses] + [global_step, lr])
         
         scalar_dict = {"loss/g/total": loss_gen_all, "learning_rate": lr, "grad_norm_g": grad_norm_g}
-        scalar_dict.update({"loss/g/mel": loss_mel, "loss/g/dur": loss_dur, "loss/g/kl": loss_kl, "loss/g/attn": loss_attn})
+        scalar_dict.update({"loss/g/mel": loss_mel, "loss/g/dur": loss_dur, "loss/g/kl": loss_kl, "loss/g/attn": loss_attn, "loss/g/recall": loss_recall})
 
         image_dict = { 
             "all/mel_org": utils.plot_spectrogram_to_numpy(mel[0].data.cpu().numpy()),
