@@ -79,7 +79,7 @@ def main(args):
                 x_tst_lengths = torch.LongTensor([stn_tst.size(0)]).cuda()
                 mel = net_g.infer(x_tst, x_tst_lengths, noise_scale=.667, noise_scale_w=0.8, length_scale=1)[0]     # [b, h, t]
                 audio = vocoder.forward(mel)[0, 0].cpu().numpy()    # [t * hop]
-                output_file = os.path.join(output_dir, os.path.basename(item_id) +'.wav')
+                output_file = os.path.join(output_dir, os.path.basename(item_id))
                 write(output_file, 22050, audio)
                 wav_fn = f"/blob/v-jcong/data/LJSpeech-1.1/raw/wavs/{os.path.basename(item_id)}"
                 y, sr = librosa.load(wav_fn, sr=None)
