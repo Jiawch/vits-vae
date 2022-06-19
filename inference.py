@@ -79,7 +79,7 @@ def main(args):
                 x_tst_lengths = torch.LongTensor([stn_tst.size(0)]).cuda()
                 mel = net_g.infer(x_tst, x_tst_lengths, noise_scale=.667, noise_scale_w=0.8, length_scale=1)[0]     # [b, h, t]
                 audio = vocoder.forward(mel)[0, 0].cpu().numpy()    # [t * hop]
-                output_file = os.path.join(output_dir, os.path.basename(item_id) +'.wav')
+                output_file = os.path.join(output_dir, os.path.basename(item_id))
                 write(output_file, 22050, audio)
                 wav_fn = f"/blob/v-jcong/data/LJSpeech-1.1/raw/wavs/{os.path.basename(item_id)}"
                 y, sr = librosa.load(wav_fn, sr=None)
@@ -112,7 +112,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     log_dir = "logs"
     args.model_dir = os.path.join(log_dir, args.m)
-    args.ckpt = utils.latest_checkpoint_path(os.path.join(args.model_dir, ""), "G_*.pth")
+    #args.ckpt = utils.latest_checkpoint_path(os.path.join(args.model_dir, ""), "G_*.pth")
+    args.ckpt = "/blob/v-jiaweichen/code/fs2/vits-vae/logs/lj_base_sample/G_200000.pth"
     global_step = os.path.splitext(os.path.basename(args.ckpt).split("_")[1])[0]
     args.o = os.path.join(args.model_dir, f"{args.o}_{global_step}")
     main(args)

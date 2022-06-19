@@ -579,8 +579,8 @@ class SynthesizerTrn(nn.Module):
     logs_p = torch.matmul(attn.squeeze(1), logs_p.transpose(1, 2)).transpose(1, 2)
 
     if self.use_memory:
-        z = self.memory(z, y_mask)
-    o, o_mask = self.dec(z, y_lengths)
+        z_recalled = self.memory(z, y_mask)
+    o, o_mask = self.dec(z_recalled, y_lengths)
     return o, l_length, attn, o_mask, x_mask, y_mask, (z, z_p, m_p, logs_p, m_q, logs_q)
 
   def infer(self, x, x_lengths, sid=None, noise_scale=1, length_scale=1, noise_scale_w=1., max_len=None):
