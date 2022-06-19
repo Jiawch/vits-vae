@@ -594,11 +594,10 @@ class SynthesizerTrn(nn.Module):
     if self.use_memory:
         z_ = m_p + torch.randn_like(m_p) * torch.exp(logs_p)
         z_ = self.flow(z_, y_mask, g=g, reverse=True)
-        z_tgt = z.detach()
-        z, (attn, attn_) = self.memory(z, z_, y_mask)
-        z_recalled = z
-    o, o_mask = self.dec(z, y_lengths)
-    return o, l_length, attn, o_mask, x_mask, y_mask, (z, z_p, m_p, logs_p, m_q, logs_q), (attn, attn_), (z_tgt, z_recalled)
+        z_recalled, (attn, attn_) = self.memory(z, z_, y_mask)
+    o, o_mask = self.dec(z_recalled, y_lengths)
+
+    return o, l_length, attn, o_mask, x_mask, y_mask, (z, z_p, m_p, logs_p, m_q, logs_q), (attn, attn_), (z.detach(), z_recalled)
 
   def infer(self, x, x_lengths, sid=None, noise_scale=1, length_scale=1, noise_scale_w=1., max_len=None):
     x, m_p, logs_p, x_mask = self.enc_p(x, x_lengths)
