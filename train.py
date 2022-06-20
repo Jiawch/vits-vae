@@ -47,7 +47,7 @@ def main():
   if hps.train.use_ddp:
     n_gpus = torch.cuda.device_count()
     os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '80000'
+    os.environ['MASTER_PORT'] = '80001'
     mp.spawn(run, nprocs=n_gpus, args=(n_gpus, hps,))
   else:
     run(0, 1, hps)
@@ -160,7 +160,7 @@ def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loade
         loss_attn = F.kl_div(attn_p.log(), attn_q, reduction='batchmean') * hps.train.c_attn
         loss_reconstruction = F.l1_loss(z, z_memory) * hps.train.c_reconstruction
 
-        loss_gen_all = loss_mel + loss_dur + loss_kl + loss_attn + loss_recall
+        loss_gen_all = loss_mel + loss_dur + loss_kl + loss_attn + loss_reconstruction
     optim_g.zero_grad()
     scaler.scale(loss_gen_all).backward()
     scaler.unscale_(optim_g)
@@ -171,14 +171,14 @@ def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loade
     if rank==0:
       if global_step % hps.train.log_interval == 0:
         lr = optim_g.param_groups[0]['lr']
-        losses = [loss_mel, loss_dur, loss_kl, loss_attn, loss_recall]
+        losses = [loss_mel, loss_dur, loss_kl, loss_attn, loss_reconstruction]
         logger.info('Train Epoch: {} [{:.0f}%]'.format(
           epoch,
           100. * batch_idx / len(train_loader)))
         logger.info([x.item() for x in losses] + [global_step, lr])
         
         scalar_dict = {"loss/g/total": loss_gen_all, "learning_rate": lr, "grad_norm_g": grad_norm_g}
-        scalar_dict.update({"loss/g/mel": loss_mel, "loss/g/dur": loss_dur, "loss/g/kl": loss_kl, "loss/g/attn": loss_attn, "loss/g/recall": loss_recall})
+        scalar_dict.update({"loss/g/mel": loss_mel, "loss/g/dur": loss_dur, "loss/g/kl": loss_kl, "loss/g/attn": loss_attn, "loss/g/reconstruction": loss_reconstruction})
 
         image_dict = { 
             "all/mel_org": utils.plot_spectrogram_to_numpy(mel[0].data.cpu().numpy()),
