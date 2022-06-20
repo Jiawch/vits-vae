@@ -435,6 +435,7 @@ class Memory(nn.Module):
         p_dropout):
         super().__init__()
         self.memory_bank = nn.Parameter(torch.FloatTensor(memory_channels, memory_size))  # [memory_channels， memory_size]
+        init.normal_(self.memory_bank, mean=0, std=0.5)
         self.attention = attentions.EncoderWithMemory(
             memory_channels,
             hidden_channels,
