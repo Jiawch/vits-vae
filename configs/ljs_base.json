@@ -15,8 +15,8 @@
     "warmup_epochs": 0,
     "c_mel": 45.0,
     "c_kl": 50000,
-    "c_attn": 45.0,
-    "c_recall": 1.0,
+    "c_attn": 1.0,
+    "c_reconstruction": 45.0,
     "use_ddp": true
   },
   "data": {
