@@ -140,7 +140,7 @@ def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loade
 
     with autocast(enabled=hps.train.fp16_run):
       y_hat, l_length, attn, _, x_mask, z_mask,\
-      (z, z_p, m_p, logs_p, m_q, logs_q), (attn_q, attn_p), (z_tgt, z_recalled) = net_g(x, x_lengths, spec, spec_lengths)
+      (z, z_p, m_p, logs_p, m_q, logs_q), (attn_q, attn_p) = net_g(x, x_lengths, spec, spec_lengths)
 
       mel = spec_to_mel_torch(
           spec, 
@@ -157,9 +157,7 @@ def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loade
         loss_mel = F.l1_loss(mel, y_hat) * hps.train.c_mel
         c_kl = min(1., global_step / hps.train.c_kl)
         loss_kl = kl_loss(z_p, logs_q, m_p, logs_p, z_mask) * c_kl
-        loss_attn = (1. - F.cosine_similarity(attn_q, attn_p, dim=-1).mean()) * hps.train.c_attn
-        #loss_attn = F.l1_loss(attn_q, attn_p) * hps.train.c_attn
-        loss_recall = F.l1_loss(z_tgt, z_recalled) * hps.train.c_recall
+        loss_attn = F.kl_div(attn_p.log(), attn_q, reduction='batchmean') * hps.train.c_attn
 
         loss_gen_all = loss_mel + loss_dur + loss_kl + loss_attn + loss_recall
     optim_g.zero_grad()
