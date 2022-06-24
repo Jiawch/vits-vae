@@ -112,8 +112,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     log_dir = "logs"
     args.model_dir = os.path.join(log_dir, args.m)
-    #args.ckpt = utils.latest_checkpoint_path(os.path.join(args.model_dir, ""), "G_*.pth")
-    args.ckpt = "/blob/v-jiaweichen/code/fs2/vits-vae/logs/lj_base_sample/G_200000.pth"
+    args.ckpt = utils.latest_checkpoint_path(os.path.join(args.model_dir, ""), "G_*.pth")
+    #args.ckpt = "/blob/v-jiaweichen/code/fs2/vits-vae/logs/lj_base_sample/G_200000.pth"
     global_step = os.path.splitext(os.path.basename(args.ckpt).split("_")[1])[0]
     args.o = os.path.join(args.model_dir, f"{args.o}_{global_step}")
     main(args)
