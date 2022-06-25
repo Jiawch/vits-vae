@@ -13,7 +13,7 @@
     "segment_size": 8192,
     "init_lr_ratio": 1,
     "warmup_epochs": 0,
-    "c_mel": 45.0,
+    "c_mel": 1.0,
     "c_kl": 50000,
     "c_attn": 50000,
     "use_ddp": true

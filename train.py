@@ -35,7 +35,7 @@ from text.symbols import symbols
 from tqdm import tqdm
 
 
-torch.backends.cudnn.benchmark = True
+torch.backends.cudnn.benchmark = False
 global_step = 0
 
 
@@ -154,11 +154,11 @@ def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loade
       # Generator
       with autocast(enabled=False):
         loss_dur = torch.sum(l_length.float())
-        loss_mel = F.l1_loss(mel, y_hat) * hps.train.c_mel
+        loss_mel = (F.l1_loss(mel, y_hat, reduction='none') * z_mask).sum() / z_mask.sum() * hps.train.c_mel # mel: [b, 80, t]
         c_kl = min(1., global_step / hps.train.c_kl)
-        loss_kl = kl_loss(z_p, logs_q, m_p, logs_p, z_mask) * c_kl
+        loss_kl = kl_loss(z_p, logs_q, m_p, logs_p, z_mask) * c_kl # z_mask: [b, 1, t]
         c_attn = min(1., global_step / hps.train.c_attn)
-        loss_attn = F.kl_div(attn_p.log(), attn_q, reduction='batchmean') * c_attn
+        loss_attn = (F.kl_div(attn_p.log(), attn_q, reduction='none') * z_mask.unsqueeze(-1)).sum() / z_mask.sum() * c_attn
 
         loss_gen_all = loss_mel + loss_dur + loss_kl + loss_attn
     optim_g.zero_grad()
