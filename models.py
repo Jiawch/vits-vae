@@ -455,7 +455,7 @@ class Memory(nn.Module):
         v = torch.tanh(self.memory_bank_v).unsqueeze(0).expand(N, -1, -1)  # [N, memory_channels， memory_size]
         x_q, attn_q = self.attention(x_q, v, v, x_mask)
         x_p, attn_p = self.attention(x_p, k, v, x_mask)
-        return x_q, (attn_q, attn_p)
+        return (x_q, x_p), (attn_q, attn_p)
 
     def infer(self, x_p, x_mask):
         N = x_p.size(0)
@@ -553,7 +553,7 @@ class SynthesizerTrn(nn.Module):
         n_heads,
         1,
         kernel_size,
-        p_dropout=0.)
+        p_dropout=p_dropout)
 
   def forward(self, x, x_lengths, y, y_lengths, sid=None):
 
@@ -594,12 +594,12 @@ class SynthesizerTrn(nn.Module):
     if self.use_memory:
         z_ = m_p + torch.randn_like(m_p) * torch.exp(logs_p)
         z_ = self.flow(z_, y_mask, g=g, reverse=True)
-        z_memory, (attn, attn_) = self.memory(z, z_, y_mask)
+        (z_memory, z_memory_), (attn, attn_) = self.memory(z, z_, y_mask)
         o, o_mask = self.dec(z_memory, y_lengths)
     else:
         o, o_mask = self.dec(z, y_lengths)
 
-    return o, l_length, attn, o_mask, x_mask, y_mask, (z, z_p, m_p, logs_p, m_q, logs_q), (attn, attn_)
+    return o, l_length, attn, o_mask, x_mask, y_mask, (z, z_p, m_p, logs_p, m_q, logs_q), (z_memory, z_memory_), (attn, attn_)
 
   def infer(self, x, x_lengths, sid=None, noise_scale=1, length_scale=1, noise_scale_w=1., max_len=None):
     x, m_p, logs_p, x_mask = self.enc_p(x, x_lengths)

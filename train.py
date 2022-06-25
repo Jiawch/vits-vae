@@ -140,7 +140,7 @@ def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loade
 
     with autocast(enabled=hps.train.fp16_run):
       y_hat, l_length, attn, _, x_mask, z_mask,\
-      (z, z_p, m_p, logs_p, m_q, logs_q), (attn_q, attn_p) = net_g(x, x_lengths, spec, spec_lengths)
+      (z, z_p, m_p, logs_p, m_q, logs_q), (z_q_memory, z_p_memory), (attn_q, attn_p) = net_g(x, x_lengths, spec, spec_lengths)
 
       mel = spec_to_mel_torch(
           spec, 
@@ -154,13 +154,15 @@ def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loade
       # Generator
       with autocast(enabled=False):
         loss_dur = torch.sum(l_length.float())
-        loss_mel = (F.l1_loss(mel, y_hat, reduction='none') * z_mask).sum() / z_mask.sum() * hps.train.c_mel # mel: [b, 80, t]
+        #loss_mel = (F.l1_loss(mel, y_hat, reduction='none') * z_mask).sum() / z_mask.sum() * hps.train.c_mel # mel: [b, 80, t]
+        loss_mel = F.l1_loss(mel, y_hat) * hps.train.c_mel
         c_kl = min(1., global_step / hps.train.c_kl)
         loss_kl = kl_loss(z_p, logs_q, m_p, logs_p, z_mask) * c_kl # z_mask: [b, 1, t]
-        c_attn = min(1., global_step / hps.train.c_attn)
-        loss_attn = (F.kl_div(attn_p.log(), attn_q, reduction='none') * z_mask.unsqueeze(-1)).sum() / z_mask.sum() * c_attn
+        #c_attn = min(1., global_step / hps.train.c_attn)
+        #loss_attn = (F.kl_div(attn_p.log(), attn_q, reduction='none') * z_mask.unsqueeze(-1)).sum() / z_mask.sum() * c_attn
+        loss_memory = F.l1_loss(z_q_memory, z_p_memory) * hps.train.c_memory
 
-        loss_gen_all = loss_mel + loss_dur + loss_kl + loss_attn
+        loss_gen_all = loss_mel + loss_dur + loss_kl + loss_memory
     optim_g.zero_grad()
     scaler.scale(loss_gen_all).backward()
     scaler.unscale_(optim_g)
@@ -171,14 +173,14 @@ def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loade
     if rank==0:
       if global_step % hps.train.log_interval == 0:
         lr = optim_g.param_groups[0]['lr']
-        losses = [loss_mel, loss_dur, loss_kl, loss_attn]
+        losses = [loss_mel, loss_dur, loss_kl, loss_memory]
         logger.info('Train Epoch: {} [{:.0f}%]'.format(
           epoch,
           100. * batch_idx / len(train_loader)))
         logger.info([x.item() for x in losses] + [global_step, lr])
         
         scalar_dict = {"loss/g/total": loss_gen_all, "learning_rate": lr, "grad_norm_g": grad_norm_g}
-        scalar_dict.update({"loss/g/mel": loss_mel, "loss/g/dur": loss_dur, "loss/g/kl": loss_kl, "loss/g/attn": loss_attn})
+        scalar_dict.update({"loss/g/mel": loss_mel, "loss/g/dur": loss_dur, "loss/g/kl": loss_kl, "loss/g/memory": loss_memory})
 
         image_dict = { 
             "all/mel_org": utils.plot_spectrogram_to_numpy(mel[0].data.cpu().numpy()),
