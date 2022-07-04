@@ -331,7 +331,7 @@ class EncoderWithMemory(nn.Module):
     for i in range(self.n_layers):
       y, attn = self.attn_layers[i](x, k, v, attn_mask)
       y = self.drop(y)
-      x = self.norm_layers_1[i](x + y)
+      x = self.norm_layers_1[i](y)
     x = x * x_mask
     return x, attn
 
