@@ -453,8 +453,8 @@ class Memory(nn.Module):
         N = x.size(0)
         k = torch.tanh(self.memory_bank_k).unsqueeze(0).expand(N, -1, -1)  # [N, memory_channels， memory_size]
         v = torch.tanh(self.memory_bank_v).unsqueeze(0).expand(N, -1, -1)  # [N, memory_channels， memory_size]
-        x = self.attention(x, k, v, x_mask)
-        return x
+        x, attn = self.attention(x, k, v, x_mask)
+        return x, attn
 
 
 class SynthesizerTrn(nn.Module):
@@ -584,7 +584,7 @@ class SynthesizerTrn(nn.Module):
     logs_p = torch.matmul(attn.squeeze(1), logs_p.transpose(1, 2)).transpose(1, 2)
 
     if self.use_memory:
-        z = self.memory(z, y_mask)
+        z, attn = self.memory(z, y_mask)
     o, o_mask = self.dec(z, y_lengths)
     return o, l_length, attn, o_mask, x_mask, y_mask, (z, z_p, m_p, logs_p, m_q, logs_q)
 
@@ -612,7 +612,7 @@ class SynthesizerTrn(nn.Module):
     z_p = m_p + torch.randn_like(m_p) * torch.exp(logs_p) * noise_scale
     z = self.flow(z_p, y_mask, g=g, reverse=True)
     if self.use_memory:
-        z = self.memory(z, y_mask)
+        z, attn = self.memory(z, y_mask)
     o, o_mask = self.dec((z * y_mask), y_lengths)
     return o, attn, y_mask, (z, z_p, m_p, logs_p)
 
