@@ -315,9 +315,12 @@ class EncoderWithMemory(nn.Module):
     self.p_dropout = p_dropout
     self.window_size = window_size
 
+    self.drop = nn.Dropout(p_dropout)
     self.attn_layers = nn.ModuleList()
+    self.norm_layers_1 = nn.ModuleList()
     for i in range(self.n_layers):
       self.attn_layers.append(MultiHeadAttentionWithMemory(memory_channels, hidden_channels, hidden_channels, n_heads, p_dropout=p_dropout, window_size=window_size))
+      self.norm_layers_1.append(LayerNorm(hidden_channels))
 
   def forward(self, x, k, v, x_mask):
     b, _, memory_size = k.size()
@@ -326,7 +329,9 @@ class EncoderWithMemory(nn.Module):
     x = x * x_mask
     for i in range(self.n_layers):
       y = self.attn_layers[i](x, k, v, attn_mask)
-    x = (x + y) * x_mask
+      y = self.drop(y)
+      x = self.norm_layers_1[i](x + y)
+    x = x * x_mask
     return x
 
 

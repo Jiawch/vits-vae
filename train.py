@@ -47,7 +47,7 @@ def main():
   if hps.train.use_ddp:
     n_gpus = torch.cuda.device_count()
     os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '80000'
+    os.environ['MASTER_PORT'] = '80001'
     mp.spawn(run, nprocs=n_gpus, args=(n_gpus, hps,))
   else:
     run(0, 1, hps)
