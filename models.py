@@ -622,7 +622,7 @@ class SynthesizerTrn(nn.Module):
     z_p = m_p + torch.randn_like(m_p) * torch.exp(logs_p) * noise_scale
     z = self.flow(z_p, y_mask, g=g, reverse=True)
     if self.use_memory:
-        z = self.memory.inder(z, y_mask)
+        z = self.memory.infer(z, y_mask)
     o, o_mask = self.dec((z * y_mask), y_lengths)
     return o, attn, y_mask, (z, z_p, m_p, logs_p)
 

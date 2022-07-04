@@ -408,7 +408,7 @@ class MultiHeadAttentionWithMemory(nn.Module):
         block_mask = torch.ones_like(scores).triu(-self.block_length).tril(self.block_length)
         scores = scores.masked_fill(block_mask == 0, -1e4)
     # p_attn = F.softmax(scores, dim=-1) # [b, n_h, t_t, t_s]
-    p_attn = Sparsemax(dim=-1)(scores)
+    p_attn = Sparsemax(dim=-1)(scores.float())
     p_attn = self.drop(p_attn)
     output = torch.matmul(p_attn, value)
     if self.window_size is not None:

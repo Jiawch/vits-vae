@@ -47,7 +47,7 @@ def main():
   if hps.train.use_ddp:
     n_gpus = torch.cuda.device_count()
     os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '80000'
+    os.environ['MASTER_PORT'] = '80001'
     mp.spawn(run, nprocs=n_gpus, args=(n_gpus, hps,))
   else:
     run(0, 1, hps)
@@ -161,7 +161,7 @@ def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loade
         c_attn = min(1., global_step / hps.train.c_attn) if hps.train.c_attn != 0 else 0
         loss_attn = (F.kl_div(torch.log(torch.clamp(attn_p, min=1e-5)), attn_q, reduction='batchmean')) * c_attn
 
-        loss_gen_all = loss_mel + loss_dur + loss_kl
+        loss_gen_all = loss_mel + loss_dur + loss_kl + loss_attn
     optim_g.zero_grad()
     scaler.scale(loss_gen_all).backward()
     scaler.unscale_(optim_g)
@@ -172,7 +172,7 @@ def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loade
     if rank==0:
       if global_step % hps.train.log_interval == 0:
         lr = optim_g.param_groups[0]['lr']
-        losses = [loss_mel, loss_dur, loss_kl]
+        losses = [loss_mel, loss_dur, loss_kl, loss_attn]
         logger.info('Train Epoch: {} [{:.0f}%]'.format(
           epoch,
           100. * batch_idx / len(train_loader)))
