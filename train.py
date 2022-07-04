@@ -158,7 +158,7 @@ def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loade
         loss_mel = F.l1_loss(mel, y_hat) * hps.train.c_mel
         c_kl = min(1., global_step / hps.train.c_kl)
         loss_kl = kl_loss(z_p, logs_q, m_p, logs_p, z_mask) * c_kl
-        c_attn = min(1., global_step / hps.train.c_attn) if hps.train.c_attn != 0 else 0
+        c_attn = 0 if (hps.train.c_attn == 0 or global_step < hps.train.c_attn) else 1
         loss_attn = (F.kl_div(torch.log(torch.clamp(attn_p, min=1e-5)), attn_q, reduction='batchmean')) * c_attn
 
         loss_gen_all = loss_mel + loss_dur + loss_kl + loss_attn
